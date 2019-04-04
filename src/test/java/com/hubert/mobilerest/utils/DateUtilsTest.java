@@ -34,6 +34,6 @@ class DateUtilsTest {
 
         //then
         assertNotNull(epoch);
-        assertEquals(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), epoch);
+        assertEquals(localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), epoch.longValue());
     }
 }
