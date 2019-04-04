@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/hubson87/mobile-rest.svg?style=svg)](https://circleci.com/gh/hubson87/mobile-rest)
+
 I've assumed that mobile number cannot exist without the subscriber data, that's why I've put everything into one table with unique value.
 Otherwise I would just add @OneToOne mapping and put mobile numbers into a different table with cascade set.
 
