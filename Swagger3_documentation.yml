@@ -1,0 +1,270 @@
+openapi: 3.0.0
+info:
+  description: Mobile Subscriber Service
+  version: "1.0"
+  title: Mobile Service
+  contact:
+    name: Hubert Tywanek
+    email: tywanekh@gmail.com
+  license:
+    name: Apache License 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0
+tags:
+  - name: mobile-controller
+    description: Controller providing operations on mobile number subscribers
+paths:
+  /mobile/subscribers:
+    get:
+      tags:
+        - mobile-controller
+      summary: Allows to find all mobile numbers (if no criteria provided) or obtain
+        the mobile numbers using criteria combinations
+      operationId: findByCriteriaUsingGET
+      parameters:
+        - name: msdnid
+          in: query
+          description: msdnid
+          required: false
+          schema:
+            type: string
+        - name: ownerId
+          in: query
+          description: ownerId
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: serviceStartDate
+          in: query
+          description: serviceStartDate
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: serviceType
+          in: query
+          description: serviceType
+          required: false
+          schema:
+            type: string
+        - name: userId
+          in: query
+          description: userId
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Elements found and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_list_transfer_object"
+            application/json;v=1:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_list_transfer_object"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: No subscribers found for provided criteria
+      deprecated: false
+    post:
+      tags:
+        - mobile-controller
+      summary: Add new mobile number to the database
+      description: Mobile number can be added only once
+      operationId: createNewSubscriberUsingPOST
+      requestBody:
+        $ref: "#/components/requestBodies/Mobile_subscriber_transfer_object"
+      responses:
+        "201":
+          description: Subscriber created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+            application/json;v=1:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+        "400":
+          description: Wrong data provided
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Customer or owner not found
+      deprecated: false
+  "/mobile/subscribers/{id}":
+    get:
+      tags:
+        - mobile-controller
+      summary: Get subscriber data by id provided on path
+      operationId: findByIdUsingGET
+      parameters:
+        - name: id
+          in: path
+          description: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Element found and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+            application/json;v=1:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: No subscribers found for provided id
+      deprecated: false
+    put:
+      tags:
+        - mobile-controller
+      summary: Update existing subscriber
+      description: User can only change mobile plan and assign different owners and users
+      operationId: updateSubscriberUsingPUT
+      parameters:
+        - name: id
+          in: path
+          description: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        $ref: "#/components/requestBodies/Mobile_subscriber_transfer_object"
+      responses:
+        "200":
+          description: Subscriber updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+            application/json;v=1:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+        "201":
+          description: Created
+        "400":
+          description: Wrong data provided
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Subscriber, customer or owner not found
+      deprecated: false
+    delete:
+      tags:
+        - mobile-controller
+      summary: Remove existing subscriber
+      operationId: deleteSubscriberUsingDELETE
+      parameters:
+        - name: id
+          in: path
+          description: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+      deprecated: false
+    patch:
+      tags:
+        - mobile-controller
+      summary: Patch existing subscriber
+      description: User can only change mobile plan and assign different owners and users
+      operationId: patchSubscriberUsingPATCH
+      parameters:
+        - name: id
+          in: path
+          description: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        $ref: "#/components/requestBodies/Mobile_subscriber_transfer_object"
+      responses:
+        "200":
+          description: Subscriber patched successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+            application/json;v=1:
+              schema:
+                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+        "204":
+          description: No Content
+        "400":
+          description: Wrong data provided
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "404":
+          description: Subscriber, customer or owner not found
+      deprecated: false
+servers:
+  - url: //localhost:8080/
+components:
+  requestBodies:
+    Mobile_subscriber_transfer_object:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+      description: mobileSubscriberDto
+      required: true
+  schemas:
+    Mobile_subscriber_list_transfer_object:
+      type: object
+      properties:
+        subscribers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+      title: Mobile subscriber list transfer object
+    Mobile_subscriber_transfer_object:
+      type: object
+      required:
+        - msisdn
+        - ownerId
+        - serviceType
+        - userId
+      properties:
+        msisdn:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        serviceStartDate:
+          type: integer
+          format: int64
+        serviceType:
+          type: string
+        userId:
+          type: integer
+          format: int64
+      title: Mobile subscriber transfer object
