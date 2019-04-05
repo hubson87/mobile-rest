@@ -184,6 +184,21 @@ class MobileSubscriberServiceTest {
     }
 
     @Test
+    void shouldNotCreateNewSubscriberAndThrowExceptionWhenDateProvidedTest() {
+        //given
+        String msdnid = "12321";
+        Long ownerId = 1L, userId = 2L;
+        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid)
+                .userId(userId).ownerId(ownerId).serviceStartDate(123123123L).build();
+
+        when(subscriberRepository.findFirstByMsisdn(anyString())).thenReturn(Optional.empty());
+        //when/then
+        assertThrows(ValidationFailedException.class, () -> service.createNewSubscriber(newObj));
+        verify(subscriberRepository, times(1)).findFirstByMsisdn(msdnid);
+        verify(customerRepository, never()).findById(userId);
+    }
+
+    @Test
     void shouldCreateNewSubscriberTest() {
         //given
         MobileSubscriberDto newObj =
@@ -364,6 +379,21 @@ class MobileSubscriberServiceTest {
     }
 
     @Test
+    void shouldNotPatchSubscriberWhenSubscriberNotExistsTest() {
+        //given
+        Long userId = 10L;
+        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(userId).build();
+
+        when(subscriberRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        //when/then
+        assertThrows(ResourceNotFoundException.class, () -> service.patchSubscriber(newObj, 10L));
+        verify(subscriberRepository, times(1)).findById(anyLong());
+        verify(customerRepository, never()).findById(anyLong());
+        verify(customerRepository, never()).findById(anyLong());
+    }
+
+    @Test
     void shouldNotPatchSubscriberAndThrowExceptionWhenMsisdnChangedTest() {
         //given
         String msdnid = "12321";
@@ -411,6 +441,21 @@ class MobileSubscriberServiceTest {
         verify(customerRepository, times(1)).findById(ownerId);
         verify(subscriberRepository, times(1)).findById(anyLong());
         verify(subscriberRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldNotUpdateSubscriberWhenSubscriberNotExistsTest() {
+        //given
+        Long userId = 10L;
+        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(userId).build();
+
+        when(subscriberRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        //when/then
+        assertThrows(ResourceNotFoundException.class, () -> service.updateSubscriber(newObj, 10L));
+        verify(subscriberRepository, times(1)).findById(anyLong());
+        verify(customerRepository, never()).findById(anyLong());
+        verify(customerRepository, never()).findById(anyLong());
     }
 
     @Test
@@ -474,5 +519,17 @@ class MobileSubscriberServiceTest {
 
         //then
         verify(subscriberRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    void shouldDeleteSubscriberThatNotExistsTest() {
+        //given
+        when(subscriberRepository.existsById(anyLong())).thenReturn(false);
+
+        //when
+        service.deleteSubscriberById(1L);
+
+        //then
+        verify(subscriberRepository, never()).deleteById(1L);
     }
 }

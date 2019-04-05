@@ -90,7 +90,7 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
         }
         if (dtoToPersist.getServiceStartDate() != null) {
             log.error("Customer provided service start date for creation of " + dtoToPersist.getMsisdn());
-            throw new ValidationFailedException("Service start date will be calculated automatically");
+            throw new ValidationFailedException("Service start date will be calculated automatically, so it shouldn't been provided");
         }
         Customer owner = obtainCustomer(dtoToPersist.getOwnerId());
         Customer user = obtainCustomer(dtoToPersist.getUserId());
@@ -112,14 +112,13 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
     @Transactional
     public MobileSubscriberDto updateSubscriber(@Valid @NotNull MobileSubscriberDto dtoToUpdate, @NotNull Long id) {
         Optional<MobileSubscriber> dbSubscriber = subscriberRepository.findById(id);
-
-        Customer owner = obtainCustomer(dtoToUpdate.getOwnerId());
-        Customer user = obtainCustomer(dtoToUpdate.getUserId());
-        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToUpdate, owner, user);
         if (dbSubscriber.isEmpty()) {
             log.error("Subscriber for update " + id + " not found");
             throw new ResourceNotFoundException("Subscriber not found");
         }
+        Customer owner = obtainCustomer(dtoToUpdate.getOwnerId());
+        Customer user = obtainCustomer(dtoToUpdate.getUserId());
+        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToUpdate, owner, user);
         boolean hasChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber.get(), subscriber, false);
         if (hasChanged) {
             subscriber.setId(id);
@@ -142,14 +141,14 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
     @Override
     @Transactional
     public MobileSubscriberDto patchSubscriber(@NotNull MobileSubscriberDto dtoToPatch, @NotNull Long id) {
-        Customer owner = dtoToPatch.getOwnerId() != null ? obtainCustomer(dtoToPatch.getOwnerId()) : null;
-        Customer user = dtoToPatch.getUserId() != null ? obtainCustomer(dtoToPatch.getUserId()) : null;
-        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToPatch, owner, user);
         Optional<MobileSubscriber> dbSubscriberOpt = subscriberRepository.findById(id);
         if (dbSubscriberOpt.isEmpty()) {
             log.error("Subscriber for patch " + id + " not found");
             throw new ResourceNotFoundException("Subscriber not found");
         }
+        Customer owner = dtoToPatch.getOwnerId() != null ? obtainCustomer(dtoToPatch.getOwnerId()) : null;
+        Customer user = dtoToPatch.getUserId() != null ? obtainCustomer(dtoToPatch.getUserId()) : null;
+        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToPatch, owner, user);
         MobileSubscriber dbSubscriber = dbSubscriberOpt.get();
         boolean objChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber, subscriber, true);
         if (objChanged) {

@@ -23,6 +23,8 @@
         <hamcrest.version>2.1</hamcrest.version>
         <hibernate-validator.version>6.0.14.Final</hibernate-validator.version>
         <springfox-swagger.version>2.9.2</springfox-swagger.version>
+        <mockito-junit-jupiter.version>2.22.0</mockito-junit-jupiter.version>
+        <equalsverifier.version>3.1.7</equalsverifier.version>
     </properties>
 
     <dependencies>
@@ -105,12 +107,18 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>2.22.0</version>
+            <version>${mockito-junit-jupiter.version}</version>
         </dependency>
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-library</artifactId>
             <version>${hamcrest.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>nl.jqno.equalsverifier</groupId>
+            <artifactId>equalsverifier</artifactId>
+            <version>${equalsverifier.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -173,11 +181,6 @@
                         </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <systemPropertyVariables>
-                        <jacoco-agent.destfile>target/jacoco.exec</jacoco-agent.destfile>
-                    </systemPropertyVariables>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

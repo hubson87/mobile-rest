@@ -159,5 +159,46 @@ class MobileSubscriberMapperTest {
         assertThat(res.getUserId(), nullValue());
     }
 
+    @Test
+    void shouldMapEmptyDomainToDtoNullTest() {
+        assertThat(mapper.domainToDto(null), nullValue());
+    }
 
+    @Test
+    void shouldMapEmptyDtoToDomainNullTest() {
+        assertThat(mapper.dtoToDomain(null, null, null), nullValue());
+    }
+
+    @Test
+    void shouldMapEmptySubscriberDtoToDomainNullTest() {
+        //given
+        Customer person = Person.builder().id(1L).build();
+        Customer company = Company.builder().id(2L).build();
+
+        //when
+        MobileSubscriber res = mapper.dtoToDomain(null, person, company);
+
+        //then
+        assertThat(res, notNullValue());
+        assertThat(res.getOwnerId(), is(1L));
+        assertThat(res.getUserId(), is(2L));
+        assertThat(res.getMsisdn(), nullValue());
+    }
+
+    @Test
+    void shouldMapDomainToDtoOwnerAndUserWithoutIdsTest() {
+        //given
+        MobileSubscriber domainObj = MobileSubscriber.builder()
+                .owner(Person.builder().build())
+                .user(Company.builder().build())
+                .build();
+
+        //when
+        MobileSubscriberDto res = mapper.domainToDto(domainObj);
+
+        //then
+        assertThat(res, notNullValue());
+        assertThat(res.getOwnerId(), nullValue());
+        assertThat(res.getUserId(), nullValue());
+    }
 }

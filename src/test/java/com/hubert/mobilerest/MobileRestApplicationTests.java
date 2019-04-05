@@ -10,7 +10,14 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 public class MobileRestApplicationTests {
 
     @Test
-    public void contextLoads() {
+    public void contextLoadsTest() {
     }
 
+    @Test
+    public void springBootMainNoExceptionTest()
+    {
+        MobileRestApplication.main(new String[]{
+                "--spring.main.web-environment=false"
+        });
+    }
 }
