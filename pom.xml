@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.hubert</groupId>
     <artifactId>mobile-rest</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>mobile-rest</name>
     <description>Mobile numbers maintaining service</description>
     <packaging>war</packaging>
@@ -212,19 +212,6 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <configuration>
-                    <goals>install</goals>
-                    <autoVersionSubmodules>true</autoVersionSubmodules>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
-
-    <scm>
-        <developerConnection>scm:git:https://github.com/hubson87/mobile-rest.git</developerConnection>
-    </scm>
-
 </project>

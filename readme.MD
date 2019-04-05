@@ -28,5 +28,3 @@ Swagger UI is active, so you can do the tests easily (http://localhost:8080/swag
 I've also provided the documentation in docs folder (docs/Swagger3_documentation.yaml file)
 
 I've also created some simple integration tests (with full context or data context only (*IT.java))
-
-Maven release plugin is configured on install phase
