@@ -23,4 +23,4 @@ For production purposes, I'd need to have the configuration provided, then I cou
 I wanted also to use some CommandLineRunner to provide the data for tests, but if has to be set as production quality, I have removed that.
 
 Swagger UI is active, so you can do the tests easily.
-I've also provided the documentation in main folder (Swagger3_documentation.yaml file)
+I've also provided the documentation in docs folder (docs/Swagger3_documentation.yaml file)
