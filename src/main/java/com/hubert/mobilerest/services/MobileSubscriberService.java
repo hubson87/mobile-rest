@@ -1,13 +1,14 @@
 package com.hubert.mobilerest.services;
 
-import com.hubert.mobilerest.dto.v1.MobileSubscriberDto;
-import com.hubert.mobilerest.dto.v1.MobileSubscribersDto;
+import com.hubert.mobilerest.domain.MobileSubscriber;
+
+import java.util.List;
 
 public interface MobileSubscriberService {
-    MobileSubscriberDto findSubscriberById(Long id);
-    MobileSubscribersDto findSubscribersByCriteria(MobileSubscriberDto dtoCriteria);
-    MobileSubscriberDto createNewSubscriber(MobileSubscriberDto dtoToPersist);
-    MobileSubscriberDto updateSubscriber(MobileSubscriberDto dtoToUpdate, Long id);
-    MobileSubscriberDto patchSubscriber(MobileSubscriberDto dtoToPatch, Long id);
+    MobileSubscriber findSubscriberById(Long id);
+    List<MobileSubscriber> findSubscribersByCriteria(MobileSubscriber criteria);
+    MobileSubscriber createNewSubscriber(MobileSubscriber toPersist);
+    MobileSubscriber updateSubscriber(MobileSubscriber toUpdate, Long id);
+    MobileSubscriber patchSubscriber(MobileSubscriber toPatch, Long id);
     void deleteSubscriberById(Long id);
 }

@@ -2,14 +2,12 @@ package com.hubert.mobilerest.services;
 
 import com.hubert.mobilerest.domain.Customer;
 import com.hubert.mobilerest.domain.MobileSubscriber;
-import com.hubert.mobilerest.dto.v1.MobileSubscriberDto;
-import com.hubert.mobilerest.dto.v1.MobileSubscribersDto;
 import com.hubert.mobilerest.exceptions.ResourceNotFoundException;
 import com.hubert.mobilerest.exceptions.ValidationFailedException;
-import com.hubert.mobilerest.mappers.MobileSubscriberMapper;
 import com.hubert.mobilerest.repositories.CustomerRepository;
 import com.hubert.mobilerest.repositories.MobileSubscriberRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.IterableUtils;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
@@ -30,12 +28,10 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
 
     private MobileSubscriberRepository subscriberRepository;
     private CustomerRepository customerRepository;
-    private MobileSubscriberMapper mobileSubscriberMapper;
 
-    public MobileSubscriberServiceImpl(MobileSubscriberRepository subscriberRepository, CustomerRepository customerRepository, MobileSubscriberMapper mobileSubscriberMapper) {
+    public MobileSubscriberServiceImpl(MobileSubscriberRepository subscriberRepository, CustomerRepository customerRepository) {
         this.subscriberRepository = subscriberRepository;
         this.customerRepository = customerRepository;
-        this.mobileSubscriberMapper = mobileSubscriberMapper;
     }
 
     /**
@@ -44,10 +40,10 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
      * @return Found subscriber with id
      */
     @Override
-    public MobileSubscriberDto findSubscriberById(Long id) {
+    public MobileSubscriber findSubscriberById(Long id) {
         Optional<MobileSubscriber> subscriber = subscriberRepository.findById(id);
         if (subscriber.isPresent()) {
-            return mobileSubscriberMapper.domainToDto(subscriber.get());
+            return subscriber.get();
         } else {
             log.error("Cannot find subscriber with id: " + id);
             throw new ResourceNotFoundException("Subscriber not found");
@@ -57,107 +53,103 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
     /**
      * Search subscribers by criteria.
      * If no criteria provided, then it lists all the subscribers in the database
-     * @param dtoCriteria Criteria parameters mapped as dto object
+     * @param criteria Criteria parameters
      * @return Subscribers matching provided criteria. If all values are empty, then it lists all the subscribers in the database
      */
     @Override
-    public MobileSubscribersDto findSubscribersByCriteria(MobileSubscriberDto dtoCriteria) {
+    public List<MobileSubscriber> findSubscribersByCriteria(MobileSubscriber criteria) {
         Iterable<MobileSubscriber> result;
-        if (dtoCriteria == null || dtoCriteria.isEmpty()) {     //for optimization
+        if (criteria == null || criteria.isEmpty()) {     //for optimization
             result = subscriberRepository.findAll();
         } else {
-            Customer owner = dtoCriteria.getOwnerId() != null ? new Customer(dtoCriteria.getOwnerId()) : null;
-            Customer user = dtoCriteria.getUserId() != null ? new Customer(dtoCriteria.getUserId()) : null;
-            MobileSubscriber mobileSubscriberCriteria = mobileSubscriberMapper.dtoToDomain(dtoCriteria, owner, user);
-            result = subscriberRepository.findByCriteria(mobileSubscriberCriteria);
+            result = subscriberRepository.findByCriteria(criteria);
+            if (IterableUtils.isEmpty(result)) {
+                throw new ResourceNotFoundException("No subscribers found for given criteria");
+            }
         }
-        return new MobileSubscribersDto(StreamSupport.stream(result.spliterator(), true)
-                .map(mobileSubscriberMapper::domainToDto)
-                .collect(Collectors.toList()));
+        return StreamSupport.stream(result.spliterator(), false).collect(Collectors.toList());
     }
 
     /**
      * Creating new subscriber for provided data if not msisdn not present yet
-     * @param dtoToPersist Customer data that needs to be persisted
+     * @param toPersist Customer data that needs to be persisted
      * @return Added subscriber data
      */
     @Override
     @Transactional
-    public MobileSubscriberDto createNewSubscriber(@Valid @NotNull MobileSubscriberDto dtoToPersist) {
-        if (subscriberRepository.findFirstByMsisdn(dtoToPersist.getMsisdn()).isPresent()) {
-            log.error("Subscriber with number " + dtoToPersist.getMsisdn() + " already exists in the database");
+    public MobileSubscriber createNewSubscriber(@Valid @NotNull MobileSubscriber toPersist) {
+        if (subscriberRepository.findFirstByMsisdn(toPersist.getMsisdn()).isPresent()) {
+            log.error("Subscriber with number " + toPersist.getMsisdn() + " already exists in the database");
             throw new ValidationFailedException("Msdnid already exists");
         }
-        if (dtoToPersist.getServiceStartDate() != null) {
-            log.error("Customer provided service start date for creation of " + dtoToPersist.getMsisdn());
+        if (toPersist.getServiceStartDate() != null) {
+            log.error("Customer provided service start date for creation of " + toPersist.getMsisdn());
             throw new ValidationFailedException("Service start date will be calculated automatically, so it shouldn't been provided");
         }
-        Customer owner = obtainCustomer(dtoToPersist.getOwnerId());
-        Customer user = obtainCustomer(dtoToPersist.getUserId());
-        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToPersist, owner, user);
+        //veify if owner and user exists
+        toPersist.setOwner(obtainCustomer(toPersist.getOwnerId()));
+        toPersist.setUser(obtainCustomer(toPersist.getUserId()));
+        toPersist.setServiceStartDate(LocalDateTime.now());
 
-        subscriber.setServiceStartDate(LocalDateTime.now());
-        MobileSubscriber savedSubscriber = subscriberRepository.save(subscriber);
+        MobileSubscriber savedSubscriber = subscriberRepository.save(toPersist);
         log.info("Subscriber created with id: " + savedSubscriber.getId());
-        return mobileSubscriberMapper.domainToDto(savedSubscriber);
+        return savedSubscriber;
     }
 
     /**
      * Updating subsciber method. Allows only on updates of PlanType, Owner, User. All the other changes are rejected with ValidationException
-     * @param dtoToUpdate Provided subscriber with applied changes
+     * @param toUpdate Provided subscriber with applied changes
      * @param id Id of existing subscriber that needs to be updated
      * @return Updated subscriber data
      */
     @Override
     @Transactional
-    public MobileSubscriberDto updateSubscriber(@Valid @NotNull MobileSubscriberDto dtoToUpdate, @NotNull Long id) {
+    public MobileSubscriber updateSubscriber(@Valid @NotNull MobileSubscriber toUpdate, @NotNull Long id) {
         Optional<MobileSubscriber> dbSubscriber = subscriberRepository.findById(id);
         if (dbSubscriber.isEmpty()) {
             log.error("Subscriber for update " + id + " not found");
             throw new ResourceNotFoundException("Subscriber not found");
         }
-        Customer owner = obtainCustomer(dtoToUpdate.getOwnerId());
-        Customer user = obtainCustomer(dtoToUpdate.getUserId());
-        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToUpdate, owner, user);
-        boolean hasChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber.get(), subscriber, false);
+        toUpdate.setOwner(obtainCustomer(toUpdate.getOwnerId()));
+        toUpdate.setUser(obtainCustomer(toUpdate.getUserId()));
+        boolean hasChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber.get(), toUpdate, false);
         if (hasChanged) {
-            subscriber.setId(id);
-            subscriber.setServiceStartDate(dbSubscriber.get().getServiceStartDate());
-            MobileSubscriber updatedSubscriber = subscriberRepository.save(subscriber);
+            toUpdate.setId(id);
+            toUpdate.setServiceStartDate(dbSubscriber.get().getServiceStartDate());
+            MobileSubscriber updatedSubscriber = subscriberRepository.save(toUpdate);
             log.info("Subscriber with id: " + id + " successfully updated");
-            return mobileSubscriberMapper.domainToDto(updatedSubscriber);
+            return updatedSubscriber;
         } else {
             log.info("No changes to update for subscriber with id: " + id);
-            return mobileSubscriberMapper.domainToDto(dbSubscriber.get());
+            return dbSubscriber.get();
         }
     }
 
     /**
      * Patching subsciber method. Allows only patching of PlanType, Owner, User. All the other changes are rejected with ValidationException
-     * @param dtoToPatch Provided subscriber changes
+     * @param toPatch Provided subscriber changes
      * @param id Id of existing subscriber that needs to be patched
      * @return Updated subscriber data
      */
     @Override
     @Transactional
-    public MobileSubscriberDto patchSubscriber(@NotNull MobileSubscriberDto dtoToPatch, @NotNull Long id) {
+    public MobileSubscriber patchSubscriber(@NotNull MobileSubscriber toPatch, @NotNull Long id) {
         Optional<MobileSubscriber> dbSubscriberOpt = subscriberRepository.findById(id);
         if (dbSubscriberOpt.isEmpty()) {
             log.error("Subscriber for patch " + id + " not found");
             throw new ResourceNotFoundException("Subscriber not found");
         }
-        Customer owner = dtoToPatch.getOwnerId() != null ? obtainCustomer(dtoToPatch.getOwnerId()) : null;
-        Customer user = dtoToPatch.getUserId() != null ? obtainCustomer(dtoToPatch.getUserId()) : null;
-        MobileSubscriber subscriber = mobileSubscriberMapper.dtoToDomain(dtoToPatch, owner, user);
+        toPatch.setOwner(toPatch.getOwnerId() != null ? obtainCustomer(toPatch.getOwnerId()) : null);
+        toPatch.setUser(toPatch.getUserId() != null ? obtainCustomer(toPatch.getUserId()) : null);
         MobileSubscriber dbSubscriber = dbSubscriberOpt.get();
-        boolean objChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber, subscriber, true);
+        boolean objChanged = validateChangesAndPreparePatchObjectIfNeeded(dbSubscriber, toPatch, true);
         if (objChanged) {
             MobileSubscriber updatedSubscriber = subscriberRepository.save(dbSubscriber);
             log.info("Subscriber with id: " + id + " successfully patched");
-            return mobileSubscriberMapper.domainToDto(updatedSubscriber);
+            return updatedSubscriber;
         } else {
             log.info("Subscriber with id: " + id + " not patched. Nothing to update");
-            return mobileSubscriberMapper.domainToDto(dbSubscriber);
+            return dbSubscriber;
         }
     }
 
@@ -188,11 +180,11 @@ public class MobileSubscriberServiceImpl implements MobileSubscriberService {
         }
         if (subscriber.getServiceType() != null && !subscriber.getServiceType().equals(dbSubscriber.getServiceType())) {
             if (patch) {
-                dbSubscriber.setServiceStartDate(subscriber.getServiceStartDate());
+                dbSubscriber.setServiceType(subscriber.getServiceType());
             }
             hasChanged = true;
         }
-        if (subscriber.getServiceStartDate() != null) {
+        if (subscriber.getServiceStartDate() != null && !subscriber.getServiceStartDate().equals(dbSubscriber.getServiceStartDate())) {
             log.error("Cannot update service start date. Attempt made for id " + dbSubscriber.getId());
             throw new ValidationFailedException("Service start date updates are not allowed");
         }

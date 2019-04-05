@@ -1,17 +1,22 @@
-package com.hubert.mobilerest.controllers;
+package com.hubert.mobilerest.controllers.v1;
 
+import com.hubert.mobilerest.controllers.v1.MobileController;
+import com.hubert.mobilerest.domain.Company;
+import com.hubert.mobilerest.domain.MobileSubscriber;
+import com.hubert.mobilerest.domain.Person;
 import com.hubert.mobilerest.domain.ServiceType;
 import com.hubert.mobilerest.dto.v1.MobileSubscriberDto;
-import com.hubert.mobilerest.dto.v1.MobileSubscribersDto;
 import com.hubert.mobilerest.exceptions.ResourceNotFoundException;
 import com.hubert.mobilerest.exceptions.ValidationFailedException;
+import com.hubert.mobilerest.mappers.v1.MobileSubscriberMapper;
 import com.hubert.mobilerest.services.MobileSubscriberService;
+import com.hubert.mobilerest.utils.DateUtils;
 import com.hubert.mobilerest.utils.TestUtils;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
+import org.mapstruct.factory.Mappers;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -20,11 +25,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -41,21 +50,29 @@ class MobileControllerTest {
     @MockBean
     MobileSubscriberService service;
 
+    @MockBean
+    MobileSubscriberMapper mobileSubscriberMapper;
+
     @Autowired
     MockMvc mockMvc;
 
-    private MobileSubscriberDto subscriber;
-    private MobileSubscriberDto subscriber2;
+    private MobileSubscriber subscriber;
+    private MobileSubscriber subscriber2;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.initMocks(this);
 
-        subscriber = MobileSubscriberDto.builder().userId(1L).ownerId(2L).msisdn("48123312123")
-                .serviceType(ServiceType.MOBILE_POSTPAID.name()).serviceStartDate(123000000L).build();
+        subscriber = MobileSubscriber.builder().user(Person.builder().id(1L).build()).owner(Person.builder().id(2L).build()).msisdn("48123312123")
+                .serviceType(ServiceType.MOBILE_POSTPAID).serviceStartDate(LocalDateTime.of(2019, 1, 1, 1, 1)).build();
 
-        subscriber2 = MobileSubscriberDto.builder().userId(4L).ownerId(3L).msisdn("48987789987")
-                .serviceType(ServiceType.MOBILE_PREPAID.name()).serviceStartDate(124000000L).build();
+        subscriber2 =  MobileSubscriber.builder().user(Person.builder().id(4L).build()).owner(Person.builder().id(2L).build()).msisdn("48123312123")
+                .serviceType(ServiceType.MOBILE_POSTPAID).serviceStartDate(LocalDateTime.of(2019, 1, 1, 1, 1)).build();
+
+        //let's use normal mapper for mapping the service results to be sure that has been used in service correctly
+        MobileSubscriberMapper realMapper = Mappers.getMapper(MobileSubscriberMapper.class);
+        when(mobileSubscriberMapper.domainToDto(any())).thenAnswer(param -> realMapper.domainToDto((MobileSubscriber)param.getArguments()[0]));
+        when(mobileSubscriberMapper.dtoToDomain(any())).thenAnswer(param -> realMapper.dtoToDomain((MobileSubscriberDto)param.getArguments()[0]));
     }
 
     @Test
@@ -73,8 +90,8 @@ class MobileControllerTest {
     @Test
     void shouldFindAllTest() throws Exception {
         //given
-        given(service.findSubscribersByCriteria(MobileSubscriberDto.builder().build()))
-                .willReturn(new MobileSubscribersDto(Lists.newArrayList(subscriber, subscriber2)));
+        given(service.findSubscribersByCriteria(MobileSubscriber.builder().build()))
+                .willReturn(Lists.newArrayList(subscriber, subscriber2));
 
         //when/then
         mockMvc.perform(get(CONTROLLER_BASE_URL)
@@ -86,14 +103,14 @@ class MobileControllerTest {
     @Test
     void shouldFindByCriteriaTest() throws Exception {
         given(service.findSubscribersByCriteria(
-                MobileSubscriberDto.builder()
+                MobileSubscriber.builder()
                         .msisdn("123123123")
-                        .serviceType("MOBILE_POSTPAID")
-                        .serviceStartDate(13123213L)
-                        .userId(1L)
-                        .ownerId(2L)
+                        .serviceType(ServiceType.MOBILE_POSTPAID)
+                        .serviceStartDate(LocalDateTime.now())
+                        .owner(Company.builder().id(1L).build())
+                        .user(Company.builder().id(2L).build())
                         .build()))
-                .willReturn(new MobileSubscribersDto(Lists.newArrayList(subscriber, subscriber2)));
+                .willReturn(Lists.newArrayList(subscriber, subscriber2));
 
         //when/then
         mockMvc.perform(get(CONTROLLER_BASE_URL)
@@ -110,89 +127,89 @@ class MobileControllerTest {
     @Test
     void shouldCreateNewSubscriberTest() throws Exception {
         //given
-        MobileSubscriberDto dto = MobileSubscriberDto.builder()
-                .serviceType("MOBILE_PREPAID")
+        MobileSubscriber subscriber = MobileSubscriber.builder()
+                .serviceType(ServiceType.MOBILE_POSTPAID)
                 .msisdn("49123123123")
-                .ownerId(1L)
-                .userId(2L)
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
                 .build();
 
-        MobileSubscriberDto returnedDto = MobileSubscriberDto.builder()
-                .serviceType("MOBILE_PREPAID")
+        MobileSubscriber returnedSubscriber = MobileSubscriber.builder()
+                .serviceType(ServiceType.MOBILE_PREPAID)
                 .msisdn("49123123123")
-                .ownerId(1L)
-                .userId(2L)
-                .serviceStartDate(1323132123L)
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
+                .serviceStartDate(LocalDateTime.now())
                 .build();
 
-        given(service.createNewSubscriber(dto)).willReturn(returnedDto);
+        given(service.createNewSubscriber(subscriber)).willReturn(returnedSubscriber);
 
         //when/then
         mockMvc.perform(post(CONTROLLER_BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .content(TestUtils.asJsonString(dto)))
+                .content(TestUtils.asJsonString(subscriber)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.msisdn", is("49123123123")))
-                .andExpect(jsonPath("$.serviceStartDate", is(1323132123)));
+                .andExpect(jsonPath("$.serviceStartDate", is(DateUtils.epochFromLocalDateTime(returnedSubscriber.getServiceStartDate()))));
     }
 
     @Test
     void shouldUpdateSubscriberTest() throws Exception {
         //given
-        MobileSubscriberDto dto = MobileSubscriberDto.builder()
-                .serviceType("MOBILE_PREPAID")
+        MobileSubscriber subscriber = MobileSubscriber.builder()
+                .serviceType(ServiceType.MOBILE_PREPAID)
                 .msisdn("49123123123")
-                .ownerId(1L)
-                .userId(2L)
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
                 .build();
 
-        MobileSubscriberDto returnedDto = MobileSubscriberDto.builder()
-                .serviceType("MOBILE_PREPAID")
+        MobileSubscriber retSub = MobileSubscriber.builder()
+                .serviceType(ServiceType.MOBILE_PREPAID)
                 .msisdn("49123123123")
-                .ownerId(1L)
-                .userId(2L)
-                .serviceStartDate(1323132123L)
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
+                .serviceStartDate(LocalDateTime.now())
                 .build();
 
-        given(service.updateSubscriber(dto, 1L)).willReturn(returnedDto);
+        given(service.updateSubscriber(subscriber, 1L)).willReturn(retSub);
 
         //when/then
         mockMvc.perform(put(CONTROLLER_BASE_URL + "/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .content(TestUtils.asJsonString(dto)))
+                .content(TestUtils.asJsonString(subscriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.msisdn", is("49123123123")))
-                .andExpect(jsonPath("$.serviceStartDate", is(1323132123)));
+                .andExpect(jsonPath("$.serviceStartDate", is(DateUtils.epochFromLocalDateTime(retSub.getServiceStartDate()))));
     }
 
     @Test
     void shouldPatchSubscriberTest() throws Exception {
         //given
-        MobileSubscriberDto dto = MobileSubscriberDto.builder()
-                .ownerId(1L)
-                .userId(2L)
+        MobileSubscriber subscriber = MobileSubscriber.builder()
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
                 .build();
 
-        MobileSubscriberDto returnedDto = MobileSubscriberDto.builder()
-                .serviceType("MOBILE_PREPAID")
+        MobileSubscriber returned = MobileSubscriber.builder()
+                .serviceType(ServiceType.MOBILE_PREPAID)
                 .msisdn("49123123123")
-                .ownerId(1L)
-                .userId(2L)
-                .serviceStartDate(1323132123L)
+                .owner(Company.builder().id(1L).build())
+                .user(Company.builder().id(2L).build())
+                .serviceStartDate(LocalDateTime.now())
                 .build();
 
-        given(service.patchSubscriber(dto, 1L)).willReturn(returnedDto);
+        given(service.patchSubscriber(subscriber, 1L)).willReturn(returned);
 
         //when/then
         mockMvc.perform(patch(CONTROLLER_BASE_URL + "/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .content(TestUtils.asJsonString(dto)))
+                .content(TestUtils.asJsonString(subscriber)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.msisdn", is("49123123123")))
-                .andExpect(jsonPath("$.serviceStartDate", is(1323132123)));
+                .andExpect(jsonPath("$.serviceStartDate", is(DateUtils.epochFromLocalDateTime(returned.getServiceStartDate()))));
     }
 
     @Test
@@ -224,7 +241,7 @@ class MobileControllerTest {
                 .userId(2L)
                 .build();
 
-        given(service.patchSubscriber(Mockito.any(), anyLong())).willThrow(ValidationFailedException.class);
+        given(service.patchSubscriber(any(), anyLong())).willThrow(ValidationFailedException.class);
 
         //when/then
         mockMvc.perform(patch(CONTROLLER_BASE_URL + "/1")

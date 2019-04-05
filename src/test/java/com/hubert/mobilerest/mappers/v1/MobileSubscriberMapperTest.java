@@ -1,11 +1,12 @@
-package com.hubert.mobilerest.mappers;
+package com.hubert.mobilerest.mappers.v1;
 
 import com.hubert.mobilerest.domain.Company;
-import com.hubert.mobilerest.domain.Customer;
 import com.hubert.mobilerest.domain.MobileSubscriber;
 import com.hubert.mobilerest.domain.Person;
 import com.hubert.mobilerest.domain.ServiceType;
 import com.hubert.mobilerest.dto.v1.MobileSubscriberDto;
+import com.hubert.mobilerest.exceptions.ValidationFailedException;
+import com.hubert.mobilerest.mappers.v1.MobileSubscriberMapper;
 import com.hubert.mobilerest.utils.DateUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MobileSubscriberMapperTest {
 
@@ -82,11 +84,9 @@ class MobileSubscriberMapperTest {
                 .serviceStartDate(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
                 .serviceType("MOBILE_PREPAID")
                 .build();
-        Customer owner = Company.builder().id(dto.getOwnerId()).build();
-        Customer user = Person.builder().id(dto.getUserId()).build();
 
         //when
-        MobileSubscriber res = mapper.dtoToDomain(dto, owner, user);
+        MobileSubscriber res = mapper.dtoToDomain(dto);
 
         assertThat(res, notNullValue());
         assertThat(res.getOwner(), notNullValue());
@@ -130,15 +130,15 @@ class MobileSubscriberMapperTest {
         MobileSubscriberDto subscriberDto = MobileSubscriberDto.builder().build();
 
         //when
-        MobileSubscriber res = mapper.dtoToDomain(subscriberDto, null, null);
+        MobileSubscriber res = mapper.dtoToDomain(subscriberDto);
 
         //then
         assertThat(res, notNullValue());
         assertThat(res.getId(), nullValue());
         assertThat(res.getMsisdn(), nullValue());
         assertThat(res.getServiceType(), nullValue());
-        assertThat(res.getOwner(), nullValue());
-        assertThat(res.getUser(), nullValue());
+        assertThat(res.getOwner(), notNullValue());
+        assertThat(res.getUser(), notNullValue());
         assertThat(res.getServiceStartDate(), nullValue());
     }
 
@@ -166,17 +166,13 @@ class MobileSubscriberMapperTest {
 
     @Test
     void shouldMapEmptyDtoToDomainNullTest() {
-        assertThat(mapper.dtoToDomain(null, null, null), nullValue());
+        assertThat(mapper.dtoToDomain(null), nullValue());
     }
 
     @Test
     void shouldMapEmptySubscriberDtoToDomainNullTest() {
-        //given
-        Customer person = Person.builder().id(1L).build();
-        Customer company = Company.builder().id(2L).build();
-
         //when
-        MobileSubscriber res = mapper.dtoToDomain(null, person, company);
+        MobileSubscriber res = mapper.dtoToDomain(MobileSubscriberDto.builder().ownerId(1L).userId(2L).build());
 
         //then
         assertThat(res, notNullValue());
@@ -200,5 +196,25 @@ class MobileSubscriberMapperTest {
         assertThat(res, notNullValue());
         assertThat(res.getOwnerId(), nullValue());
         assertThat(res.getUserId(), nullValue());
+    }
+
+    @Test
+    void shouldMapServiceFromStringPrepaidTest() {
+        assertThat(mapper.parseServiceType("MOBILE_PREPAID"), is(ServiceType.MOBILE_PREPAID));
+    }
+
+    @Test
+    void shouldMapServiceFromStringPostpaidTest() {
+        assertThat(mapper.parseServiceType("MOBILE_POSTPAID"), is(ServiceType.MOBILE_POSTPAID));
+    }
+
+    @Test
+    void shouldMapServiceFromStringInvalidTest() {
+        assertThrows(ValidationFailedException.class, () -> mapper.parseServiceType("invalid name"));
+    }
+
+    @Test
+    void shouldMapServiceFromNullTest() {
+        assertThat(mapper.parseServiceType(null), nullValue());
     }
 }

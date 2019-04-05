@@ -5,18 +5,13 @@ import com.hubert.mobilerest.domain.Customer;
 import com.hubert.mobilerest.domain.MobileSubscriber;
 import com.hubert.mobilerest.domain.Person;
 import com.hubert.mobilerest.domain.ServiceType;
-import com.hubert.mobilerest.dto.v1.MobileSubscriberDto;
-import com.hubert.mobilerest.dto.v1.MobileSubscribersDto;
 import com.hubert.mobilerest.exceptions.ResourceNotFoundException;
 import com.hubert.mobilerest.exceptions.ValidationFailedException;
-import com.hubert.mobilerest.mappers.MobileSubscriberMapper;
 import com.hubert.mobilerest.repositories.CustomerRepository;
 import com.hubert.mobilerest.repositories.MobileSubscriberRepository;
-import com.hubert.mobilerest.utils.DateUtils;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -55,8 +50,7 @@ class MobileSubscriberServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.initMocks(this);
-        MobileSubscriberMapper mapper = Mappers.getMapper(MobileSubscriberMapper.class);
-        service = new MobileSubscriberServiceImpl(subscriberRepository, customerRepository, mapper);
+        service = new MobileSubscriberServiceImpl(subscriberRepository, customerRepository);
 
         person = Person.builder().id(1L).address("SomeAddr").docId("123123").firstName("aaa").lastName("ddd").build();
         company = Company.builder().id(2L).address("SomeAddr2").taxId("223123").companyName("sssaaa").build();
@@ -79,7 +73,7 @@ class MobileSubscriberServiceTest {
         when(subscriberRepository.findById(subscriber.getId())).thenReturn(Optional.of(subscriber));
 
         //when
-        MobileSubscriberDto subscriber = service.findSubscriberById(this.subscriber.getId());
+        MobileSubscriber subscriber = service.findSubscriberById(this.subscriber.getId());
 
         //then
         assertThat(subscriber, notNullValue());
@@ -94,44 +88,44 @@ class MobileSubscriberServiceTest {
         when(subscriberRepository.findAll()).thenReturn(Lists.newArrayList(subscriber, MobileSubscriber.builder().id(2L).build()));
 
         //when
-        MobileSubscribersDto foundSubscribers = service.findSubscribersByCriteria(null);
+        List<MobileSubscriber> foundSubscribers = service.findSubscribersByCriteria(null);
 
         //then
-        assertThat(foundSubscribers.getSubscribers(), hasSize(2));
+        assertThat(foundSubscribers, hasSize(2));
     }
 
     @Test
     void shouldFindSubscribersByPartialCriteriaTest() {
         //given
-        MobileSubscriberDto criteria =
-                MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).build();
+        MobileSubscriber criteria =
+                MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).build();
         when(subscriberRepository.findByCriteria(any())).thenReturn(Collections.singletonList(subscriber));
 
         //when
-        MobileSubscribersDto res = service.findSubscribersByCriteria(criteria);
+        List<MobileSubscriber> res = service.findSubscribersByCriteria(criteria);
 
         //then
-        assertThat(res.getSubscribers(), hasSize(1));
-        assertThat(res.getSubscribers().get(0).getMsisdn(), is(criteria.getMsisdn()));
+        assertThat(res, hasSize(1));
+        assertThat(res.get(0).getMsisdn(), is(criteria.getMsisdn()));
     }
 
     @Test
     void shouldFindSubscribersByFullCriteriaTest() {
         //given
-        MobileSubscriberDto criteria =
-                MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(subscriber.getUserId()).ownerId(subscriber.getOwnerId())
-                        .serviceStartDate(DateUtils.epochFromLocalDateTime(subscriber.getServiceStartDate()))
-                        .serviceType(subscriber.getServiceType().name()).build();
+        MobileSubscriber criteria =
+                MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(subscriber.getUser()).owner(subscriber.getOwner())
+                        .serviceStartDate(subscriber.getServiceStartDate())
+                        .serviceType(subscriber.getServiceType()).build();
         when(subscriberRepository.findByCriteria(any())).thenReturn(Collections.singletonList(subscriber));
 
         //when
-        MobileSubscribersDto res = service.findSubscribersByCriteria(criteria);
+        List<MobileSubscriber> res = service.findSubscribersByCriteria(criteria);
 
         //then
-        assertThat(res.getSubscribers(), hasSize(1));
-        assertThat(res.getSubscribers().get(0).getMsisdn(), is(criteria.getMsisdn()));
-        assertThat(res.getSubscribers().get(0).getOwnerId(), is(criteria.getOwnerId()));
-        assertThat(res.getSubscribers().get(0).getUserId(), is(criteria.getUserId()));
+        assertThat(res, hasSize(1));
+        assertThat(res.get(0).getMsisdn(), is(criteria.getMsisdn()));
+        assertThat(res.get(0).getOwnerId(), is(criteria.getOwnerId()));
+        assertThat(res.get(0).getUserId(), is(criteria.getUserId()));
     }
 
     @Test
@@ -142,7 +136,7 @@ class MobileSubscriberServiceTest {
         when(customerRepository.findById(anyLong())).thenReturn(Optional.of(Person.builder().build()));
 
         //when/then
-        assertThrows(ValidationFailedException.class, () -> service.createNewSubscriber(MobileSubscriberDto.builder().msisdn(msdnid).build()));
+        assertThrows(ValidationFailedException.class, () -> service.createNewSubscriber(MobileSubscriber.builder().msisdn(msdnid).build()));
         verify(subscriberRepository, times(1)).findFirstByMsisdn(msdnid);
         verify(customerRepository, never()).findById(any());
     }
@@ -152,7 +146,8 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = "12321";
         Long ownerId = 1L, userId = 2L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).userId(userId).ownerId(ownerId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).user(Company.builder().id(userId).build())
+                .owner(Person.builder().id(ownerId).build()).build();
 
         when(subscriberRepository.findFirstByMsisdn(anyString())).thenReturn(Optional.empty());
         when(customerRepository.findById(ownerId)).thenReturn(Optional.empty());
@@ -170,7 +165,8 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = "12321";
         Long ownerId = 1L, userId = 2L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).userId(userId).ownerId(ownerId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).user(Company.builder().id(userId).build())
+                .owner(Person.builder().id(ownerId).build()).build();
 
         when(subscriberRepository.findFirstByMsisdn(anyString())).thenReturn(Optional.empty());
 
@@ -188,8 +184,9 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = "12321";
         Long ownerId = 1L, userId = 2L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid)
-                .userId(userId).ownerId(ownerId).serviceStartDate(123123123L).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid)
+                .user(Company.builder().id(userId).build())
+                .owner(Person.builder().id(ownerId).build()).serviceStartDate(LocalDateTime.now()).build();
 
         when(subscriberRepository.findFirstByMsisdn(anyString())).thenReturn(Optional.empty());
         //when/then
@@ -201,9 +198,9 @@ class MobileSubscriberServiceTest {
     @Test
     void shouldCreateNewSubscriberTest() {
         //given
-        MobileSubscriberDto newObj =
-                MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(subscriber.getUserId()).ownerId(subscriber.getOwnerId())
-                        .serviceType(subscriber.getServiceType().name()).build();
+        MobileSubscriber newObj =
+                MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(subscriber.getUser()).owner(subscriber.getOwner())
+                        .serviceType(subscriber.getServiceType()).build();
 
         when(subscriberRepository.findFirstByMsisdn(anyString())).thenReturn(Optional.empty());
         when(customerRepository.findById(newObj.getOwnerId())).thenReturn(Optional.of(company));
@@ -211,7 +208,7 @@ class MobileSubscriberServiceTest {
         when(subscriberRepository.save(any())).thenReturn(subscriber);
 
         //when
-        MobileSubscriberDto saved = service.createNewSubscriber(newObj);
+        MobileSubscriber saved = service.createNewSubscriber(newObj);
 
         //then
         assertThat(saved, notNullValue());
@@ -226,7 +223,8 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = subscriber.getMsisdn();
         Long ownerId = 5L, userId = subscriber.getUserId();
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).userId(userId).ownerId(ownerId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).user(subscriber.getUser())
+                .owner(Person.builder().id(ownerId).build()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(userId)).thenReturn(Optional.of(subscriber.getUser()));
@@ -242,7 +240,8 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = subscriber.getMsisdn();
         Long ownerId = subscriber.getOwnerId(), userId = 10L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).userId(userId).ownerId(ownerId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).user(Person.builder().id(userId).build())
+                .owner(subscriber.getOwner()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(userId)).thenReturn(Optional.empty());
@@ -258,9 +257,9 @@ class MobileSubscriberServiceTest {
         //given
         String msdnid = "12321";
         Long ownerId = subscriber.getOwnerId(), userId = subscriber.getUserId();
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).userId(userId).ownerId(ownerId)
-                .serviceType(subscriber.getServiceType().name())
-                .serviceStartDate(DateUtils.epochFromLocalDateTime(subscriber.getServiceStartDate())).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).user(subscriber.getUser()).owner(subscriber.getOwner())
+                .serviceType(subscriber.getServiceType())
+                .serviceStartDate(subscriber.getServiceStartDate()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(userId)).thenReturn(Optional.of(subscriber.getUser()));
@@ -276,10 +275,10 @@ class MobileSubscriberServiceTest {
     @Test
     void shouldNotUpdateSubscriberAndThrowExceptionWhenServiceStartDateChangedTest() {
         //given
-        Long newDate = DateUtils.epochFromLocalDateTime(subscriber.getServiceStartDate().plusDays(2));
+        LocalDateTime newDate = subscriber.getServiceStartDate().plusDays(2);
         Long ownerId = subscriber.getOwnerId(), userId = subscriber.getUserId();
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(userId).ownerId(ownerId)
-                .serviceType(subscriber.getServiceType().name()).serviceStartDate(newDate).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(subscriber.getUser()).owner(subscriber.getOwner())
+                .serviceType(subscriber.getServiceType()).serviceStartDate(newDate).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(userId)).thenReturn(Optional.of(subscriber.getUser()));
@@ -296,8 +295,8 @@ class MobileSubscriberServiceTest {
     void shouldNotUpdateSubscriberWhenNothingChangedTest() {
         //given
         Long ownerId = subscriber.getOwnerId(), userId = subscriber.getUserId();
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(userId).ownerId(ownerId)
-                .serviceType(subscriber.getServiceType().name())
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(subscriber.getUser()).owner(subscriber.getOwner())
+                .serviceType(subscriber.getServiceType())
                 .build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
@@ -305,7 +304,7 @@ class MobileSubscriberServiceTest {
         when(customerRepository.findById(ownerId)).thenReturn(Optional.of(subscriber.getOwner()));
 
         //when
-        MobileSubscriberDto updatedCustomer = service.updateSubscriber(newObj, subscriber.getId());
+        MobileSubscriber updatedCustomer = service.updateSubscriber(newObj, subscriber.getId());
 
         //then
         assertThat(updatedCustomer, notNullValue());
@@ -320,10 +319,10 @@ class MobileSubscriberServiceTest {
         //given
         Customer newUser = Person.builder().id(99L).build();
         Customer newOwner = Person.builder().id(98L).build();
-        String newServiceType = ServiceType.MOBILE_PREPAID.name();
+        ServiceType newServiceType = ServiceType.MOBILE_PREPAID;
 
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(newUser.getId())
-                .ownerId(newOwner.getId()).serviceType(newServiceType)
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(newUser)
+                .owner(newOwner).serviceType(newServiceType)
                 .build();
 
         when(subscriberRepository.findById(subscriber.getId())).thenReturn(Optional.of(subscriber));
@@ -332,11 +331,11 @@ class MobileSubscriberServiceTest {
         when(subscriberRepository.save(any())).thenReturn(MobileSubscriber.builder()
                 .owner(newOwner)
                 .user(newUser)
-                .serviceType(ServiceType.valueOf(newServiceType))
+                .serviceType(newServiceType)
                 .build());
 
         //when
-        MobileSubscriberDto updatedCustomer = service.updateSubscriber(newObj, subscriber.getId());
+        MobileSubscriber updatedCustomer = service.updateSubscriber(newObj, subscriber.getId());
 
         //then
         assertThat(updatedCustomer, notNullValue());
@@ -354,7 +353,7 @@ class MobileSubscriberServiceTest {
     void shouldNotPatchSubscriberAndThrowExceptionWhenOwnerNotExistsTest() {
         //given
         Long ownerId = 5L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().ownerId(ownerId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().owner(Company.builder().id(ownerId).build()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(ownerId)).thenReturn(Optional.empty());
@@ -368,7 +367,7 @@ class MobileSubscriberServiceTest {
     void shouldNotPatchSubscriberWhenUserNotExistsTest() {
         //given
         Long userId = 10L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(userId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().user(Person.builder().id(userId).build()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
         when(customerRepository.findById(userId)).thenReturn(Optional.empty());
@@ -382,7 +381,7 @@ class MobileSubscriberServiceTest {
     void shouldNotPatchSubscriberWhenSubscriberNotExistsTest() {
         //given
         Long userId = 10L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(userId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().user(Person.builder().id(userId).build()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -397,7 +396,7 @@ class MobileSubscriberServiceTest {
     void shouldNotPatchSubscriberAndThrowExceptionWhenMsisdnChangedTest() {
         //given
         String msdnid = "12321";
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(msdnid).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(msdnid).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
 
@@ -409,8 +408,8 @@ class MobileSubscriberServiceTest {
     @Test
     void shouldNotPatchSubscriberAndThrowExceptionWhenServiceStartDateChangedTest() {
         //given
-        Long newDate = DateUtils.epochFromLocalDateTime(subscriber.getServiceStartDate().plusDays(2));
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().serviceStartDate(newDate).build();
+        LocalDateTime newDate = subscriber.getServiceStartDate().plusDays(2);
+        MobileSubscriber newObj = MobileSubscriber.builder().serviceStartDate(newDate).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
 
@@ -424,8 +423,8 @@ class MobileSubscriberServiceTest {
     void shouldNotPatchSubscriberWhenNothingChangedTest() {
         //given
         Long ownerId = subscriber.getOwnerId(), userId = subscriber.getUserId();
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().msisdn(subscriber.getMsisdn()).userId(userId).ownerId(ownerId)
-                .serviceType(subscriber.getServiceType().name())
+        MobileSubscriber newObj = MobileSubscriber.builder().msisdn(subscriber.getMsisdn()).user(subscriber.getUser()).owner(subscriber.getOwner())
+                .serviceType(subscriber.getServiceType())
                 .build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
@@ -433,7 +432,7 @@ class MobileSubscriberServiceTest {
         when(customerRepository.findById(ownerId)).thenReturn(Optional.of(subscriber.getOwner()));
 
         //when
-        MobileSubscriberDto updatedCustomer = service.patchSubscriber(newObj, subscriber.getId());
+        MobileSubscriber updatedCustomer = service.patchSubscriber(newObj, subscriber.getId());
 
         //then
         assertThat(updatedCustomer, notNullValue());
@@ -447,7 +446,7 @@ class MobileSubscriberServiceTest {
     void shouldNotUpdateSubscriberWhenSubscriberNotExistsTest() {
         //given
         Long userId = 10L;
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(userId).build();
+        MobileSubscriber newObj = MobileSubscriber.builder().user(Person.builder().id(userId).build()).build();
 
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -461,11 +460,11 @@ class MobileSubscriberServiceTest {
     @Test
     void shouldNotUpdateSubscriberWhenEmptyChangeProvidedTest() {
         //given
-        MobileSubscriberDto dto = new MobileSubscriberDto();
+        MobileSubscriber value = new MobileSubscriber();
         when(subscriberRepository.findById(anyLong())).thenReturn(Optional.of(subscriber));
 
         //when
-        MobileSubscriberDto updatedCustomer = service.patchSubscriber(dto, subscriber.getId());
+        MobileSubscriber updatedCustomer = service.patchSubscriber(value, subscriber.getId());
 
         //then
         assertThat(updatedCustomer, notNullValue());
@@ -479,10 +478,10 @@ class MobileSubscriberServiceTest {
         //given
         Customer newUser = Person.builder().id(99L).build();
         Customer newOwner = Person.builder().id(98L).build();
-        String newServiceType = ServiceType.MOBILE_PREPAID.name();
+        ServiceType newServiceType = ServiceType.MOBILE_PREPAID;
 
-        MobileSubscriberDto newObj = MobileSubscriberDto.builder().userId(newUser.getId())
-                .ownerId(newOwner.getId()).serviceType(newServiceType)
+        MobileSubscriber newObj = MobileSubscriber.builder().user(newUser)
+                .owner(newOwner).serviceType(newServiceType)
                 .build();
 
         when(subscriberRepository.findById(subscriber.getId())).thenReturn(Optional.of(subscriber));
@@ -491,11 +490,11 @@ class MobileSubscriberServiceTest {
         when(subscriberRepository.save(any())).thenReturn(MobileSubscriber.builder()
                 .owner(newOwner)
                 .user(newUser)
-                .serviceType(ServiceType.valueOf(newServiceType))
+                .serviceType(newServiceType)
                 .build());
 
         //when
-        MobileSubscriberDto updatedCustomer = service.patchSubscriber(newObj, subscriber.getId());
+        MobileSubscriber updatedCustomer = service.patchSubscriber(newObj, subscriber.getId());
 
         //then
         assertThat(updatedCustomer, notNullValue());

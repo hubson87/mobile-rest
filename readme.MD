@@ -20,7 +20,11 @@ Operations descriptions:
     
 I've used H2 as dependencies, so spring boot can easily provide the database config automatic way.
 For production purposes, I'd need to have the configuration provided, then I could configure the access.
-I wanted also to use some CommandLineRunner to provide the data for tests, but if has to be set as production quality, I have removed that.
+**I've provided the sql file to init the database for profile "develop", which can be uncommented in application.properties.**
+Then it'll create some dummy data for tests. If develop profile is not active, I should set "spring.jpa.hibernate.ddl-auto=validate", so it should expect the database already provided and valid.
+But that will cause that application wouldn't start at all, as it's configured for H2 db, so it would never start :) 
 
-Swagger UI is active, so you can do the tests easily.
+Swagger UI is active, so you can do the tests easily (http://localhost:8080/swagger-ui.html)
 I've also provided the documentation in docs folder (docs/Swagger3_documentation.yaml file)
+
+I've also created some simple integration tests (with full context or data context only (*IT.java))

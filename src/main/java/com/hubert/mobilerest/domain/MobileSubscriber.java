@@ -21,6 +21,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 @Getter
 @Setter
@@ -88,5 +90,15 @@ public class MobileSubscriber implements Serializable {
         if (owner != null) {
             owner.getOwnedNumbers().add(this);
         }
+    }
+
+    public boolean isEmpty() {
+        if (user != null && user.getId() != null) {
+            return false;
+        }
+        if (owner != null && owner.getId() != null) {
+            return false;
+        }
+        return Stream.of(msisdn, serviceType, serviceStartDate).allMatch(Objects::isNull);
     }
 }

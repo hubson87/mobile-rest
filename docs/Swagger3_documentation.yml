@@ -21,9 +21,9 @@ paths:
         the mobile numbers using criteria combinations
       operationId: findByCriteriaUsingGET
       parameters:
-        - name: msdnid
+        - name: msisdn
           in: query
-          description: msdnid
+          description: msisdn
           required: false
           schema:
             type: string
@@ -85,10 +85,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
             application/json;v=1:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
         "400":
           description: Wrong data provided
         "401":
@@ -118,10 +120,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
             application/json;v=1:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
         "401":
           description: Unauthorized
         "403":
@@ -151,10 +155,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
             application/json;v=1:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
         "201":
           description: Created
         "400":
@@ -211,10 +217,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
             application/json;v=1:
               schema:
-                $ref: "#/components/schemas/Mobile_subscriber_transfer_object"
+                $ref: "#/components/schemas/Resource_Mobile_subscriber_transfer_obj\
+                  ect_"
         "204":
           description: No Content
         "400":
@@ -238,6 +246,54 @@ components:
       description: mobileSubscriberDto
       required: true
   schemas:
+    Link:
+      type: object
+      properties:
+        deprecation:
+          type: string
+          xml:
+            name: deprecation
+            attribute: true
+            wrapped: false
+        href:
+          type: string
+          xml:
+            name: href
+            attribute: true
+            wrapped: false
+        hreflang:
+          type: string
+          xml:
+            name: hreflang
+            attribute: true
+            wrapped: false
+        media:
+          type: string
+          xml:
+            name: media
+            attribute: true
+            wrapped: false
+        rel:
+          type: string
+          xml:
+            name: rel
+            attribute: true
+            wrapped: false
+        templated:
+          type: boolean
+        title:
+          type: string
+          xml:
+            name: title
+            attribute: true
+            wrapped: false
+        type:
+          type: string
+          xml:
+            name: type
+            attribute: true
+            wrapped: false
+      title: Link
     Mobile_subscriber_list_transfer_object:
       type: object
       properties:
@@ -268,3 +324,33 @@ components:
           type: integer
           format: int64
       title: Mobile subscriber transfer object
+    Resource_Mobile_subscriber_transfer_object_:
+      type: object
+      required:
+        - msisdn
+        - ownerId
+        - serviceType
+        - userId
+      properties:
+        _links:
+          type: array
+          xml:
+            name: link
+            attribute: false
+            wrapped: false
+          items:
+            $ref: "#/components/schemas/Link"
+        msisdn:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        serviceStartDate:
+          type: integer
+          format: int64
+        serviceType:
+          type: string
+        userId:
+          type: integer
+          format: int64
+      title: Resource«Mobile subscriber transfer object»

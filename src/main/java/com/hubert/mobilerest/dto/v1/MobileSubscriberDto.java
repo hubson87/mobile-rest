@@ -42,9 +42,4 @@ public class MobileSubscriberDto {
 
     @ApiModelProperty(name = "Mobile number creation date")
     private Long serviceStartDate;
-
-    @JsonIgnore
-    public boolean isEmpty() {
-        return Stream.of(msisdn, userId, ownerId, serviceType, serviceStartDate).allMatch(Objects::isNull);
-    }
 }
