@@ -177,7 +177,7 @@
                             <!-- Sets the path to the file which contains the execution data. -->
                             <dataFile>target/jacoco.exec</dataFile>
                             <!-- Sets the output directory for the code coverage report. -->
-                            <outputDirectory>target/coverage-reports</outputDirectory>
+                            <outputDirectory>target/com.hubert.mobilerest/coverage-reports</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
